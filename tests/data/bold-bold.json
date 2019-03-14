@@ -1,0 +1,15 @@
+[
+    {
+        "text": "bold still bold",
+        "runs": [
+            {
+                "text": "bold ",
+                "bold": true
+            },
+            {
+                "text": "still bold",
+                "bold": true
+            }
+        ]
+    }
+]
