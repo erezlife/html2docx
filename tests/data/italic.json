@@ -1,0 +1,24 @@
+[
+    {
+        "text": "Lorem ipsum dolor sit amet.",
+        "runs": [
+            {
+                "text": "Lorem "
+            },
+            {
+                "text": "ipsum",
+                "italic": true
+            },
+            {
+                "text": " dolor "
+            },
+            {
+                "text": "sit",
+                "italic": true
+            },
+            {
+                "text": " amet."
+            }
+        ]
+    }
+]

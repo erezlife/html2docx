@@ -1,0 +1,56 @@
+[
+    {
+        "text": "one",
+        "style": "List Bullet",
+        "runs": [
+            {
+                "text": "one"
+            }
+        ]
+    },
+    {
+        "text": "two",
+        "style": "List Bullet",
+        "runs": [
+            {
+                "text": "two"
+            }
+        ]
+    },
+    {
+        "text": "one",
+        "style": "List Number",
+        "runs": [
+            {
+                "text": "one"
+            }
+        ]
+    },
+    {
+        "text": "two",
+        "style": "List Number",
+        "runs": [
+            {
+                "text": "two"
+            }
+        ]
+    },
+    {
+        "text": "one",
+        "style": "List Bullet",
+        "runs": [
+            {
+                "text": "one"
+            }
+        ]
+    },
+    {
+        "text": "nested",
+        "style": "List Bullet 2",
+        "runs": [
+            {
+                "text": "nested"
+            }
+        ]
+    }
+]

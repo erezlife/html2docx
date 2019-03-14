@@ -1,0 +1,17 @@
+[
+    {
+        "text": "Loremipsumdolor",
+        "runs": [
+            {
+                "text": "Lorem"
+            },
+            {
+                "text": "ipsum",
+                "bold": true
+            },
+            {
+                "text": "dolor"
+            }
+        ]
+    }
+]
