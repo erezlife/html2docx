@@ -22,7 +22,7 @@ with open("my.html") as fp:
 # html2docx() returns an io.BytesIO() object. The HTML must be valid.
 buf = html2docx(html, title="My Document")
 
-with open("my.docx") as fp:
+with open("my.docx", "wb") as fp:
     fp.write(buf.getvalue())
 ```
 
