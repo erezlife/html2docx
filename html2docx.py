@@ -23,6 +23,7 @@ class HTML2Docx(HTMLParser):
         self.bold = 0
         self.italic = 0
         self.underline = 0
+        self.extra_data = ""
 
     def feed(self, data: str) -> None:
         super().feed(data)
@@ -38,6 +39,10 @@ class HTML2Docx(HTMLParser):
             self.finish()
             level = int(tag[-1])
             self.p = self.doc.add_heading(level=level)
+        elif tag == "a":
+            href = next((val for name, val in attrs if name == "href"), "")
+            if href:
+                self.extra_data = " " + href
         elif tag == "ul":
             self.add_list_style("List Bullet")
         elif tag == "ol":
@@ -55,6 +60,8 @@ class HTML2Docx(HTMLParser):
         if tag in ["p", "div", "li"] or self.header_re.match(tag):
             self.finish()
             self.p = None
+        elif tag == "a":
+            self.extra_data = ""
         elif tag in ["ul", "ol"]:
             self.list_style.pop()
         elif tag in ["b", "strong"]:
@@ -71,6 +78,9 @@ class HTML2Docx(HTMLParser):
     def out(self, data: str, strip_whitespace: bool = True) -> None:
         if not self.p:
             self.p = self.doc.add_paragraph()
+
+        if self.extra_data:
+            data += self.extra_data
 
         run = Run(
             data,
