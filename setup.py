@@ -8,7 +8,7 @@ def readall(path):
 
 setup(
     name="html2docx",
-    version="1.0.0",
+    version="1.1.0",
     license="MIT",
     description="Convert valid HTML input to docx",
     long_description=readall("README.md"),
