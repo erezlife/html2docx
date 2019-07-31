@@ -1,28 +1,28 @@
 [
     {
-        "text": "a",
+        "text": "a ",
         "style": "List Bullet",
         "runs": [
             {
-                "text": "a"
+                "text": "a "
             }
         ]
     },
     {
-        "text": "b",
+        "text": "b ",
         "style": "List Bullet 2",
         "runs": [
             {
-                "text": "b"
+                "text": "b "
             }
         ]
     },
     {
-        "text": "c",
+        "text": "c ",
         "style": "List Bullet 3",
         "runs": [
             {
-                "text": "c"
+                "text": "c "
             }
         ]
     },

@@ -1,155 +1,183 @@
-import io
-import re
+"""Parser for converting HTML to DOCX
+
+Accept input from a source like TinyMCE generated HTML. The
+source HTML may be preprocessed to limit tags and attributes.
+The input HTML must be valid with all closing tags (except
+for `br` tag).
+
+This module assumes a few conventions:
+
+- Block elements: `h1` to `h6`, `p`, `ol`, `ul`.
+- Any text inside a block element (`div`, `blockquote`, `pre`) that is
+  not inside a `p` element will have its own `p` element created
+  for it. The block element itself is not represented in the
+  resulting document.
+"""
+
 from html.parser import HTMLParser
-from typing import List, Tuple
+from io import BytesIO
+from typing import Dict, List, Tuple
+import re
 
 from docx import Document
-from docx.text.paragraph import Paragraph
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 
-WHITESPACE_RE = re.compile(r"\s+")
+
+PT_WHITESPACE = re.compile(r"\s+")
+PT_VALPX = re.compile(r"^\d+px$")
+
+
+def get_attrs(attrs: List) -> List:
+    args = []
+    for attr in attrs:
+        if attr == ("style", "text-decoration: underline;"):
+            args.append("underline")
+        elif attr == ("style", "text-decoration: line-through;"):
+            args.append("strike")
+    return args
+
+
+def get_p_style(a: str) -> Dict:
+    """Split a MIME type formatted text into a dictionary
+
+    >>> get_p_style("param1: Value 1; param2: value two;")
+    {'param1': 'Value 1', 'param2': 'value two'}
+    """
+    return dict((t.strip() for t in i.split(":")) for i in a.split(";") if i)
 
 
 class HTML2Docx(HTMLParser):
-    header_re = re.compile(r"^h[1-6]$")
+    ALIGNMENTS = {
+        "left": WD_ALIGN_PARAGRAPH.LEFT,
+        "center": WD_ALIGN_PARAGRAPH.CENTER,
+        "right": WD_ALIGN_PARAGRAPH.RIGHT,
+        "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
+    }
 
     def __init__(self, title: str):
         super().__init__()
         self.doc = Document()
         self.doc.core_properties.title = title
 
-        self.p: Paragraph = None
-        self.runs: List[Run] = []
-        self.list_style: List[str] = []
-        self.bold = 0
-        self.italic = 0
-        self.underline = 0
-        self.extra_data = ""
+        self.font_name = None
+        self.style = None
+        self.pre = False
+        self.p = None
+        self.r = None
+        self.list_styles = []
+        self.attrs = []
+        self.href = ""
 
-    def feed(self, data: str) -> None:
-        super().feed(data)
-        self.finish()
+    def _add_p(self, attrs=()) -> None:
+        style = self.list_styles and self.list_styles[-1] or self.style
+        self.p = self.doc.add_paragraph(style=style)
+        p_stype = get_p_style(dict(attrs).get("style", ""))
+        if p_stype.get("text-align"):
+            self.p.alignment = self.ALIGNMENTS[p_stype["text-align"]]
+        if re.match(PT_VALPX, p_stype.get("padding-left", "")):
+            padding = int(p_stype["padding-left"][:-2])
+            self.p.paragraph_format.left_indent = Pt(padding)
+        self.r = None
+        self.attrs = []
+
+    def _add_r(self, attrs=None) -> None:
+        if self.p is None:
+            self._add_p()
+        if attrs is not None:
+            self.attrs.append(attrs)
+        self.r = self.p.add_run()
+        self.r.font.name = self.font_name
+        for style in (a for s in self.attrs for a in s):
+            setattr(self.r.font, style, True)
+
+    def _curb_r(self) -> None:
+        self.attrs = self.attrs[:-1]
+        self.r = None
+
+    def _ensure_r(self) -> None:
+        if self.r is None:
+            self._add_r()
+
+    def _add_list_style(self, name: str) -> None:
+        level = min(len(self.list_styles) + 1, 3)
+        suffix = level > 1 and f" {level}" or ""
+        self.list_styles.append(f"{name}{suffix}")
+        self.p = None
+        self.r = None
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
-        if tag in ["p", "div"]:
-            self.finish()
-            self.p = self.doc.add_paragraph()
+        if tag == "a":
+            self.href = dict(attrs).get("href")
+            self._add_r([])
+        elif tag in ("b", "strong"):
+            self._add_r(["bold"])
+        elif tag == "blockquote":
+            self.style = "Quote"
         elif tag == "br":
-            self.out("\n", strip_whitespace=False)
-        elif self.header_re.match(tag):
-            self.finish()
+            self._ensure_r()
+            self.r.add_break()
+        elif tag == "code":
+            self.font_name = "Mono"
+        elif tag in ("em", "i"):
+            self._add_r(["italic"])
+        elif tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
             level = int(tag[-1])
             self.p = self.doc.add_heading(level=level)
-        elif tag == "a":
-            href = next((val for name, val in attrs if name == "href"), "")
-            if href:
-                self.extra_data = " " + href
-        elif tag == "ul":
-            self.add_list_style("List Bullet")
         elif tag == "ol":
-            self.add_list_style("List Number")
-        elif tag == "li":
-            self.p = self.doc.add_paragraph(style=self.list_style[-1])
-        elif tag in ["b", "strong"]:
-            self.bold += 1
-        elif tag in ["i", "em"]:
-            self.italic += 1
+            self._add_list_style("List Number")
+        elif tag == "p":
+            self._add_p(attrs=attrs)
+        elif tag == "pre":
+            self.pre = True
+            self._add_p()
+        elif tag == "span":
+            run_attrs = get_attrs(attrs)
+            self._add_r(run_attrs)
+        elif tag == "sub":
+            self._add_r(["subscript"])
+        elif tag == "sup":
+            self._add_r(["superscript"])
         elif tag == "u":
-            self.underline += 1
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag in ["p", "div", "li"] or self.header_re.match(tag):
-            self.finish()
-            self.p = None
-        elif tag == "a":
-            self.extra_data = ""
-        elif tag in ["ul", "ol"]:
-            self.list_style.pop()
-        elif tag in ["b", "strong"]:
-            self.bold -= 1
-        elif tag in ["i", "em"]:
-            self.italic -= 1
-        elif tag == "u":
-            self.underline -= 1
+            self._add_r(["underline"])
+        elif tag == "ul":
+            self._add_list_style("List Bullet")
 
     def handle_data(self, data: str) -> None:
-        if self.p or data.strip():
-            self.out(data)
+        if not data.strip() and self.p is None:  # whitespace between tags
+            return
+        self._ensure_r()
+        if not self.pre:
+            data = re.sub(PT_WHITESPACE, " ", data)
+        self.r.add_text(data)
 
-    def out(self, data: str, strip_whitespace: bool = True) -> None:
-        if not self.p:
-            self.p = self.doc.add_paragraph()
-
-        if self.extra_data:
-            data += self.extra_data
-
-        run = Run(
-            data,
-            bold=bool(self.bold),
-            italic=bool(self.italic),
-            underline=bool(self.underline),
-            strip_whitespace=strip_whitespace,
-        )
-        self.runs.append(run)
-
-    def finish(self) -> None:
-        """Collapse white space across runs."""
-        prev_run = None
-        for run in self.runs:
-            if run.strip_whitespace:
-                run.text = WHITESPACE_RE.sub(" ", run.text.strip())
-                if prev_run and prev_run.strip_whitespace:
-                    if prev_run.needs_space_suffix:
-                        prev_run.text += " "
-                    elif run.text and run.needs_space_prefix:
-                        run.text = " " + run.text
-            prev_run = run
-
-        for run in self.runs:
-            if run.text:
-                doc_run = self.p.add_run(run.text)
-                doc_run.bold = run.bold
-                doc_run.italic = run.italic
-                doc_run.underline = run.underline
-
-        self.p = None
-        self.runs = []
-
-    def add_list_style(self, style: str) -> None:
-        self.finish()
-        if self.list_style:
-            # The template included by python-docx only has 3 list styles.
-            level = min(len(self.list_style) + 1, 3)
-            style = f"{style} {level}"
-        self.list_style.append(style)
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("a", "b", "em", "i", "span", "strong", "sub", "sup", "u"):
+            if tag == "a" and self.href:
+                self.r.add_text(f" [{self.href}]")
+                self.href = ""
+            self._curb_r()
+        elif tag == "blockquote":
+            self.style = None
+        elif tag == "code":
+            self.font_name = None
+        elif tag in ("h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"):
+            self.p = None
+            self.r = None
+            self.attrs = []
+            if tag in ("ol", "ul"):
+                self.list_styles = self.list_styles[:-1]
+            elif tag == "pre":
+                self.pre = False
 
 
-class Run:
-    def __init__(
-        self,
-        text: str,
-        bold: bool = False,
-        italic: bool = False,
-        underline: bool = False,
-        strip_whitespace: bool = True,
-    ):
-        self.text = text
-        self.bold = bold
-        self.italic = italic
-        self.underline = underline
-        self.strip_whitespace = strip_whitespace
-
-        self.needs_space_prefix = bool(WHITESPACE_RE.match(text[0]))
-        self.needs_space_suffix = bool(WHITESPACE_RE.match(text[-1]))
-
-
-def html2docx(content: str, title: str) -> io.BytesIO:
+def html2docx(content: str, title: str) -> BytesIO:
     """Convert valid HTML content to a docx document and return it as a
     io.BytesIO() object.
-
     """
     parser = HTML2Docx(title)
     parser.feed(content)
 
-    buf = io.BytesIO()
+    buf = BytesIO()
     parser.doc.save(buf)
     return buf

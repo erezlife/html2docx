@@ -36,11 +36,11 @@
         ]
     },
     {
-        "text": "one",
+        "text": "one ",
         "style": "List Bullet",
         "runs": [
             {
-                "text": "one"
+                "text": "one "
             }
         ]
     },

@@ -1,0 +1,33 @@
+[
+    {
+        "text": "Regular underlined underlined-crossed underlined regular crossed.",
+        "runs": [
+            {
+                "text": "Regular "
+            },
+            {
+                "text": "underlined ",
+                "underline": true
+            },
+            {
+                "text": "underlined-crossed",
+                "underline": true,
+                "strike": true
+            },
+            {
+                "text": " underlined",
+                "underline": true
+            },
+            {
+                "text": " regular "
+            },
+            {
+                "text": "crossed",
+                "strike": true
+            },
+            {
+                "text": "."
+            }
+        ]
+    }
+]

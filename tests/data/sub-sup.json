@@ -1,0 +1,26 @@
+[
+    {
+        "text": "X1 = 2, y2 = 4.",
+        "runs": [
+            {
+                "text": "X"
+            },
+            {
+                "text": "1",
+                "subscript": true,
+                "superscript": false
+            },
+            {
+                "text": " = 2, y"
+            },
+            {
+                "text": "2",
+                "subscript": false,
+                "superscript": true
+            },
+            {
+                "text": " = 4."
+            }
+        ]
+    }
+]
