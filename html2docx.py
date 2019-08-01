@@ -1,7 +1,7 @@
 import io
 import re
 from html.parser import HTMLParser
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from docx import Document
 from docx.text.paragraph import Paragraph
@@ -29,7 +29,7 @@ class HTML2Docx(HTMLParser):
         super().feed(data)
         self.finish()
 
-    def handle_starttag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag in ["p", "div"]:
             self.finish()
             self.p = self.doc.add_paragraph()
