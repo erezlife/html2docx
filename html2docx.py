@@ -1,6 +1,6 @@
-import io
 import re
 from html.parser import HTMLParser
+from io import BytesIO
 from typing import List, Optional, Tuple
 
 from docx import Document
@@ -142,13 +142,13 @@ class Run:
         self.needs_space_suffix = bool(WHITESPACE_RE.match(text[-1]))
 
 
-def html2docx(content: str, title: str) -> io.BytesIO:
+def html2docx(content: str, title: str) -> BytesIO:
     """Convert valid HTML content to a docx document and return it as a
     io.BytesIO() object.
     """
     parser = HTML2Docx(title)
     parser.feed(content)
 
-    buf = io.BytesIO()
+    buf = BytesIO()
     parser.doc.save(buf)
     return buf
