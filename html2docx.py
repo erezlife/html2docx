@@ -145,7 +145,6 @@ class Run:
 def html2docx(content: str, title: str) -> io.BytesIO:
     """Convert valid HTML content to a docx document and return it as a
     io.BytesIO() object.
-
     """
     parser = HTML2Docx(title)
     parser.feed(content)
