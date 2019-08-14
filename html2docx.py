@@ -147,7 +147,7 @@ def html2docx(content: str, title: str) -> BytesIO:
     io.BytesIO() object.
     """
     parser = HTML2Docx(title)
-    parser.feed(content)
+    parser.feed(content.strip())
 
     buf = BytesIO()
     parser.doc.save(buf)
