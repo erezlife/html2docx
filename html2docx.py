@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 
 from docx import Document
 from docx.text.paragraph import Paragraph
+from docx.text.run import Run
 
 WHITESPACE_RE = re.compile(r"\s+")
 
@@ -14,130 +15,97 @@ class HTML2Docx(HTMLParser):
         super().__init__()
         self.doc = Document()
         self.doc.core_properties.title = title
-
-        self.p: Paragraph = None
-        self.runs: List[Run] = []
         self.list_style: List[str] = []
-        self.bold = 0
-        self.italic = 0
-        self.underline = 0
-        self.extra_data = ""
+        self.href = ""
+        self._reset()
 
-    def feed(self, data: str) -> None:
-        super().feed(data)
-        self.finish()
+    def _reset(self) -> None:
+        self.p: Optional[Paragraph] = None
+        self.r: Optional[Run] = None
+
+        # Formatting options
+        self.pre = False
+        self.attrs: List[List[str]] = []
+        self.collapse_space = True
+
+    def finish_p(self) -> None:
+        if self.r is not None:
+            self.r.text = self.r.text.rstrip()
+        self._reset()
+
+    def init_run(self, attrs: List[str]) -> None:
+        self.r = None
+        self.attrs.append(attrs)
+
+    def finish_run(self) -> None:
+        self.attrs = self.attrs[:-1]
+        self.r = None
+
+    def add_text(self, data: str) -> None:
+        if self.p is None:
+            style = self.list_style[-1] if self.list_style else None
+            self.p = self.doc.add_paragraph(style=style)
+        if self.r is None:
+            self.r = self.p.add_run()
+            for attrs in self.attrs:
+                for run_style in attrs:
+                    setattr(self.r.font, run_style, True)
+        self.r.add_text(data)
+
+    def add_list_style(self, name: str) -> None:
+        self.finish_p()
+        # The template included by python-docx only has 3 list styles.
+        level = min(len(self.list_style) + 1, 3)
+        suffix = f" {level}" if level > 1 else ""
+        self.list_style.append(f"{name}{suffix}")
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag == "a":
-            href = next((val for name, val in attrs if name == "href"), "")
-            if href:
-                self.extra_data = " " + href
+            self.href = str(next((val for name, val in attrs if name == "href"), ""))
+            self.init_run([])
         elif tag in ["b", "strong"]:
-            self.bold += 1
+            self.init_run(["bold"])
         elif tag == "br":
-            self.out("\n", strip_whitespace=False)
-        elif tag in ["div", "p"]:
-            self.finish()
-            self.p = self.doc.add_paragraph()
+            if self.r:
+                self.r.add_break()
         elif tag in ["em", "i"]:
-            self.italic += 1
+            self.init_run(["italic"])
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
-            self.finish()
             level = int(tag[-1])
             self.p = self.doc.add_heading(level=level)
-        elif tag == "li":
-            self.p = self.doc.add_paragraph(style=self.list_style[-1])
         elif tag == "ol":
             self.add_list_style("List Number")
+        elif tag == "pre":
+            self.pre = True
         elif tag == "u":
-            self.underline += 1
+            self.init_run(["underline"])
         elif tag == "ul":
             self.add_list_style("List Bullet")
 
-    def handle_endtag(self, tag: str) -> None:
-        if tag == "a":
-            self.extra_data = ""
-        elif tag in ["b", "strong"]:
-            self.bold -= 1
-        elif tag in ["div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "p"]:
-            self.finish()
-            self.p = None
-        elif tag in ["em", "i"]:
-            self.italic -= 1
-        elif tag in ["ol", "ul"]:
-            self.list_style.pop()
-        elif tag == "u":
-            self.underline -= 1
-
     def handle_data(self, data: str) -> None:
-        if self.p or data.strip():
-            self.out(data)
+        if not self.pre:
+            data = re.sub(WHITESPACE_RE, " ", data)
+        if self.collapse_space:
+            data = data.lstrip()
+        if data:
+            if self.href:
+                if data.endswith(" "):
+                    data += self.href + " "
+                else:
+                    data += " " + self.href
+                self.href = ""
+            self.collapse_space = data.endswith(" ")
+            self.add_text(data)
 
-    def out(self, data: str, strip_whitespace: bool = True) -> None:
-        if not self.p:
-            self.p = self.doc.add_paragraph()
-
-        if self.extra_data:
-            data += self.extra_data
-
-        run = Run(
-            data,
-            bold=bool(self.bold),
-            italic=bool(self.italic),
-            underline=bool(self.underline),
-            strip_whitespace=strip_whitespace,
-        )
-        self.runs.append(run)
-
-    def finish(self) -> None:
-        """Collapse white space across runs."""
-        prev_run = None
-        for run in self.runs:
-            if run.strip_whitespace:
-                run.text = WHITESPACE_RE.sub(" ", run.text.strip())
-                if prev_run and prev_run.strip_whitespace:
-                    if prev_run.needs_space_suffix:
-                        prev_run.text += " "
-                    elif run.text and run.needs_space_prefix:
-                        run.text = " " + run.text
-            prev_run = run
-
-        for run in self.runs:
-            if run.text:
-                doc_run = self.p.add_run(run.text)
-                doc_run.bold = run.bold
-                doc_run.italic = run.italic
-                doc_run.underline = run.underline
-
-        self.p = None
-        self.runs = []
-
-    def add_list_style(self, style: str) -> None:
-        self.finish()
-        if self.list_style:
-            # The template included by python-docx only has 3 list styles.
-            level = min(len(self.list_style) + 1, 3)
-            style = f"{style} {level}"
-        self.list_style.append(style)
-
-
-class Run:
-    def __init__(
-        self,
-        text: str,
-        bold: bool = False,
-        italic: bool = False,
-        underline: bool = False,
-        strip_whitespace: bool = True,
-    ):
-        self.text = text
-        self.bold = bold
-        self.italic = italic
-        self.underline = underline
-        self.strip_whitespace = strip_whitespace
-
-        self.needs_space_prefix = bool(WHITESPACE_RE.match(text[0]))
-        self.needs_space_suffix = bool(WHITESPACE_RE.match(text[-1]))
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ["a", "b", "em", "i", "strong", "u"]:
+            self.finish_run()
+        elif tag in ["h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"]:
+            self.finish_p()
+            if tag in ["ol", "ul"]:
+                del self.list_style[-1]
+            elif tag == "pre":
+                self.pre = False
 
 
 def html2docx(content: str, title: str) -> BytesIO:
@@ -145,7 +113,7 @@ def html2docx(content: str, title: str) -> BytesIO:
     io.BytesIO() object.
     """
     parser = HTML2Docx(title)
-    parser.feed(content)
+    parser.feed(content.strip())
 
     buf = BytesIO()
     parser.doc.save(buf)
