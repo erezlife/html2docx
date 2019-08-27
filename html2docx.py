@@ -105,9 +105,12 @@ class HTML2Docx(HTMLParser):
         for run in self.runs:
             if run.text:
                 doc_run = self.p.add_run(run.text)
-                doc_run.bold = run.bold
-                doc_run.italic = run.italic
-                doc_run.underline = run.underline
+                if run.bold:
+                    doc_run.bold = run.bold
+                if run.italic:
+                    doc_run.italic = run.italic
+                if run.underline:
+                    doc_run.underline = run.underline
 
         self.p = None
         self.runs = []
