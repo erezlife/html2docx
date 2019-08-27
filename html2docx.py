@@ -10,8 +10,6 @@ WHITESPACE_RE = re.compile(r"\s+")
 
 
 class HTML2Docx(HTMLParser):
-    header_re = re.compile(r"^h[1-6]$")
-
     def __init__(self, title: str):
         super().__init__()
         self.doc = Document()
@@ -30,44 +28,44 @@ class HTML2Docx(HTMLParser):
         self.finish()
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
-        if tag in ["p", "div"]:
-            self.finish()
-            self.p = self.doc.add_paragraph()
-        elif tag == "br":
-            self.out("\n", strip_whitespace=False)
-        elif self.header_re.match(tag):
-            self.finish()
-            level = int(tag[-1])
-            self.p = self.doc.add_heading(level=level)
-        elif tag == "a":
+        if tag == "a":
             href = next((val for name, val in attrs if name == "href"), "")
             if href:
                 self.extra_data = " " + href
-        elif tag == "ul":
-            self.add_list_style("List Bullet")
-        elif tag == "ol":
-            self.add_list_style("List Number")
-        elif tag == "li":
-            self.p = self.doc.add_paragraph(style=self.list_style[-1])
         elif tag in ["b", "strong"]:
             self.bold += 1
-        elif tag in ["i", "em"]:
+        elif tag == "br":
+            self.out("\n", strip_whitespace=False)
+        elif tag in ["div", "p"]:
+            self.finish()
+            self.p = self.doc.add_paragraph()
+        elif tag in ["em", "i"]:
             self.italic += 1
+        elif tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+            self.finish()
+            level = int(tag[-1])
+            self.p = self.doc.add_heading(level=level)
+        elif tag == "li":
+            self.p = self.doc.add_paragraph(style=self.list_style[-1])
+        elif tag == "ol":
+            self.add_list_style("List Number")
         elif tag == "u":
             self.underline += 1
+        elif tag == "ul":
+            self.add_list_style("List Bullet")
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in ["p", "div", "li"] or self.header_re.match(tag):
-            self.finish()
-            self.p = None
-        elif tag == "a":
+        if tag == "a":
             self.extra_data = ""
-        elif tag in ["ul", "ol"]:
-            self.list_style.pop()
         elif tag in ["b", "strong"]:
             self.bold -= 1
-        elif tag in ["i", "em"]:
+        elif tag in ["div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "p"]:
+            self.finish()
+            self.p = None
+        elif tag in ["em", "i"]:
             self.italic -= 1
+        elif tag in ["ol", "ul"]:
+            self.list_style.pop()
         elif tag == "u":
             self.underline -= 1
 
