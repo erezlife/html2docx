@@ -77,6 +77,10 @@ class HTML2Docx(HTMLParser):
             self.add_list_style("List Number")
         elif tag == "pre":
             self.pre = True
+        elif tag == "sub":
+            self.init_run(["subscript"])
+        elif tag == "sup":
+            self.init_run(["superscript"])
         elif tag == "u":
             self.init_run(["underline"])
         elif tag == "ul":
@@ -98,7 +102,7 @@ class HTML2Docx(HTMLParser):
             self.add_text(data)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in ["a", "b", "em", "i", "strong", "u"]:
+        if tag in ["a", "b", "em", "i", "strong", "sub", "sup", "u"]:
             self.finish_run()
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"]:
             self.finish_p()

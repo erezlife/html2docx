@@ -1,0 +1,18 @@
+[
+    {
+        "text": "H2O",
+        "runs": [
+            {
+                "text": "H"
+            },
+            {
+                "text": "2",
+                "superscript": false,
+                "subscript": true
+            },
+            {
+                "text": "O"
+            }
+        ]
+    }
+]
