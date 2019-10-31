@@ -6,11 +6,7 @@
                 "text": "The "
             },
             {
-                "text": "localhost http://localhost",
-                "bold": true
-            },
-            {
-                "text": " link",
+                "text": "localhost http://localhost link",
                 "bold": true
             },
             {

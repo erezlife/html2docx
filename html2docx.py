@@ -1,13 +1,42 @@
 import re
 from html.parser import HTMLParser
 from io import BytesIO
-from typing import List, Optional, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 from docx import Document
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
+from tinycss2 import parse_declaration_list
+from tinycss2.ast import IdentToken
 
 WHITESPACE_RE = re.compile(r"\s+")
+
+
+def attr_to_css(attr: Tuple[str, Optional[str]]) -> Iterator[Tuple[str, str]]:
+    name, value = attr
+    if name == "style":
+        for declaration in parse_declaration_list(value):
+            for value in declaration.value:
+                if isinstance(value, IdentToken):
+                    yield declaration.lower_name, value.lower_value
+
+
+def html_attrs_to_font_style(attrs: List[Tuple[str, Optional[str]]]) -> List[str]:
+    """Return Font style names based on tag style attributes
+
+    :param attrs:
+        a list of attribute name plus attribute value tuples.
+    :returns:
+        a list of style names to be applied to Run Font property
+    """
+    styles = []
+    for attr in attrs:
+        for style in attr_to_css(attr):
+            if style == ("text-decoration", "underline"):
+                styles.append("underline")
+            elif style == ("text-decoration", "line-through"):
+                styles.append("strike")
+    return styles
 
 
 class HTML2Docx(HTMLParser):
@@ -34,12 +63,14 @@ class HTML2Docx(HTMLParser):
         self._reset()
 
     def init_run(self, attrs: List[str]) -> None:
-        self.r = None
         self.attrs.append(attrs)
+        if attrs:
+            self.r = None
 
     def finish_run(self) -> None:
-        self.attrs = self.attrs[:-1]
-        self.r = None
+        attrs = self.attrs.pop()
+        if attrs:
+            self.r = None
 
     def add_text(self, data: str) -> None:
         if self.p is None:
@@ -77,6 +108,9 @@ class HTML2Docx(HTMLParser):
             self.add_list_style("List Number")
         elif tag == "pre":
             self.pre = True
+        elif tag == "span":
+            span_attrs = html_attrs_to_font_style(attrs)
+            self.init_run(span_attrs)
         elif tag == "sub":
             self.init_run(["subscript"])
         elif tag == "sup":
@@ -102,7 +136,7 @@ class HTML2Docx(HTMLParser):
             self.add_text(data)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in ["a", "b", "em", "i", "strong", "sub", "sup", "u"]:
+        if tag in ["a", "b", "em", "i", "span", "strong", "sub", "sup", "u"]:
             self.finish_run()
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"]:
             self.finish_p()

@@ -35,6 +35,13 @@ def test_html2docx(html_path, spec_path):
         assert len(p.runs) == len(runs_spec)
         for run, run_spec in zip(p.runs, runs_spec):
             assert run.text == run_spec["text"]
-            for attr in ("bold", "italic", "underline", "subscript", "superscript"):
+            for attr in (
+                "bold",
+                "italic",
+                "strike",
+                "subscript",
+                "superscript",
+                "underline",
+            ):
                 msg = f"Wrong {attr} for text '{run.text}' in {html_path}"
                 assert getattr(run.font, attr) is run_spec.get(attr), msg
