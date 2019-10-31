@@ -1,0 +1,48 @@
+[
+    {
+        "text": "This is a very important issue.",
+        "runs": [
+            {
+                "text": "This is a "
+            },
+            {
+                "text": "very",
+                "strike": true,
+                "underline": true
+            },
+            {
+                "text": " important",
+                "underline": true
+            },
+            {
+                "text": " issue."
+            }
+        ]
+    },
+    {
+        "text": "both underline and strike-through",
+        "runs": [
+            {
+                "text": "both underline and strike-through",
+                "underline": true,
+                "strike": true
+            }
+        ]
+    },
+    {
+        "text": "Lorem ipsum.",
+        "runs": [
+            {
+                "text": "Lorem "
+            },
+            {
+                "text": "ipsum",
+                "underline": true,
+                "strike": true
+            },
+            {
+                "text": "."
+            }
+        ]
+    }
+]
