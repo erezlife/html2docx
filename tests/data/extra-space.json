@@ -3,10 +3,15 @@
         "text": "one two three four",
         "runs": [
             {
-                "text": "one two "
+                "text": "one "
+            },
+            {
+                "text": "two ",
+                "italic": true
             },
             {
                 "text": "three ",
+                "italic": true,
                 "underline": true
             },
             {
