@@ -9,6 +9,8 @@ from html2docx import html2docx
 TEST_DIR = pathlib.Path(__file__).parent.resolve(strict=True)
 PROJECT_DIR = TEST_DIR.parent
 
+FONT_ATTRS = ["bold", "italic", "strike", "subscript", "superscript", "underline"]
+
 
 def generate_testdata():
     datadir = TEST_DIR / "data"
@@ -20,6 +22,7 @@ def generate_testdata():
 @pytest.mark.parametrize("html_path,spec_path", generate_testdata())
 def test_html2docx(html_path, spec_path):
     html_rel_path = html_path.relative_to(PROJECT_DIR)
+    spec_rel_path = spec_path.relative_to(PROJECT_DIR)
 
     title = html_path.name
     html = html_path.read_text()
@@ -38,14 +41,11 @@ def test_html2docx(html_path, spec_path):
         runs_spec = p_spec["runs"]
         assert len(p.runs) == len(runs_spec)
         for run, run_spec in zip(p.runs, runs_spec):
-            assert run.text == run_spec["text"]
-            for attr in (
-                "bold",
-                "italic",
-                "strike",
-                "subscript",
-                "superscript",
-                "underline",
-            ):
+            assert run.text == run_spec.pop("text")
+            unknown = set(run_spec).difference(FONT_ATTRS)
+            assert not unknown, "Unknown attributes in {}: {}".format(
+                spec_rel_path, ", ".join(unknown)
+            )
+            for attr in FONT_ATTRS:
                 msg = f"Wrong {attr} for text '{run.text}' in {html_rel_path}"
                 assert getattr(run.font, attr) is run_spec.get(attr), msg
