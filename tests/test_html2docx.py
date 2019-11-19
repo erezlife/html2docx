@@ -1,5 +1,4 @@
 import json
-import pathlib
 
 import docx
 import pytest
@@ -7,8 +6,7 @@ from docx.shared import Pt
 
 from html2docx import html2docx
 
-TEST_DIR = pathlib.Path(__file__).parent.resolve(strict=True)
-PROJECT_DIR = TEST_DIR.parent
+from .utils import PROJECT_DIR, TEST_DIR
 
 FONT_ATTRS = ["bold", "italic", "strike", "subscript", "superscript", "underline"]
 
@@ -51,6 +49,7 @@ def test_html2docx(html_path, spec_path):
         assert len(p.runs) == len(runs_spec)
         for run, run_spec in zip(p.runs, runs_spec):
             assert run.text == run_spec.pop("text")
+            shapes_spec = run_spec.pop("shapes", None)
             unknown = set(run_spec).difference(FONT_ATTRS)
             assert not unknown, "Unknown attributes in {}: {}".format(
                 spec_rel_path, ", ".join(unknown)
@@ -58,3 +57,10 @@ def test_html2docx(html_path, spec_path):
             for attr in FONT_ATTRS:
                 msg = f"Wrong {attr} for text '{run.text}' in {html_rel_path}"
                 assert getattr(run.font, attr) is run_spec.get(attr), msg
+            if shapes_spec:
+                shapes = run.part.inline_shapes
+                assert len(shapes) == len(shapes_spec)
+                for shape, shape_spec in zip(shapes, shapes_spec):
+                    assert shape.type == shape_spec["type"]
+                    assert shape.width == shape_spec["width"]
+                    assert shape.height == shape_spec["height"]
