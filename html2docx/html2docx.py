@@ -9,6 +9,8 @@ from docx.text.run import Run
 from tinycss2 import parse_declaration_list
 from tinycss2.ast import IdentToken
 
+from .image import load_image
+
 WHITESPACE_RE = re.compile(r"\s+")
 
 ALIGNMENTS = {
@@ -111,9 +113,14 @@ class HTML2Docx(HTMLParser):
         suffix = f" {level}" if level > 1 else ""
         self.list_style.append(f"{name}{suffix}")
 
+    def add_picture(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        src = get_attr(attrs, "src")
+        image_buffer = load_image(src)
+        self.doc.add_picture(image_buffer)
+
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag == "a":
-            self.href = str(next((val for name, val in attrs if name == "href"), ""))
+            self.href = get_attr(attrs, "href")
             self.init_run([])
         elif tag in ["b", "strong"]:
             self.init_run(["bold"])
@@ -125,6 +132,8 @@ class HTML2Docx(HTMLParser):
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
             level = int(tag[-1])
             self.p = self.doc.add_heading(level=level)
+        elif tag == "img":
+            self.add_picture(attrs)
         elif tag == "ol":
             self.add_list_style("List Number")
         elif tag == "p":

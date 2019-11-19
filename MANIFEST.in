@@ -1,5 +1,6 @@
 include LICENSE
 include README.md
 include tox.ini
+include html2docx/image-broken.png
 include html2docx/py.typed
 recursive-include tests *.html *.json *.py
