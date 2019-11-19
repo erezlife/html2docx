@@ -9,7 +9,7 @@ from docx.text.run import Run
 from tinycss2 import parse_declaration_list
 from tinycss2.ast import IdentToken
 
-from .image import load_image
+from .image import image_size, load_image
 
 WHITESPACE_RE = re.compile(r"\s+")
 
@@ -115,8 +115,14 @@ class HTML2Docx(HTMLParser):
 
     def add_picture(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
         src = get_attr(attrs, "src")
+        height_attr = get_attr(attrs, "height")
+        width_attr = get_attr(attrs, "width")
+        height_px = int(height_attr) if height_attr else None
+        width_px = int(width_attr) if width_attr else None
+
         image_buffer = load_image(src)
-        self.doc.add_picture(image_buffer)
+        size = image_size(image_buffer, width_px, height_px)
+        self.doc.add_picture(image_buffer, **size)
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag == "a":

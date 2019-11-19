@@ -4,9 +4,16 @@ import pathlib
 import time
 import urllib.error
 import urllib.request
+from typing import Dict, Optional
 
 from docx.image.exceptions import UnrecognizedImageError
 from docx.image.image import Image
+from docx.shared import Inches
+
+# The usable size is the space inside the default template margins.
+# In LibreOffice, the maximum height for an image is capped to USABLE_HEIGHT.
+USABLE_HEIGHT = Inches(8.1)
+USABLE_WIDTH = Inches(5.8)
 
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MiB
 
@@ -49,3 +56,46 @@ def load_image(src: str) -> io.BytesIO:
         image_buffer = io.BytesIO(broken_img_path.read_bytes())
 
     return image_buffer
+
+
+def image_size(
+    image_buffer: io.BytesIO,
+    width_px: Optional[int] = None,
+    height_px: Optional[int] = None,
+) -> Dict[str, int]:
+    """
+    Compute width and height to feed python-docx so that image is contained in the page
+    and respects width_px and height_px.
+
+    Return:
+        Empty: No resize
+        Single dimension (width or height): image ratio is expected to be maintained
+        Two dimensions (width and height): image should be resized to dimensions
+    """
+    image = Image.from_blob(image_buffer.getbuffer())
+
+    height = image.px_height if height_px is None else height_px
+    width = image.px_width if width_px is None else width_px
+
+    height = Inches(height / image.vert_dpi)
+    width = Inches(width / image.horz_dpi)
+
+    size = {}
+    if width > USABLE_WIDTH:
+        new_height = round(image.px_height / (image.px_width / USABLE_WIDTH))
+        if new_height > USABLE_HEIGHT:
+            size["height"] = USABLE_HEIGHT
+        else:
+            size["width"] = USABLE_WIDTH
+    elif height > USABLE_HEIGHT:
+        new_width = round(image.px_width / (image.px_height / USABLE_HEIGHT))
+        if new_width > USABLE_WIDTH:
+            size["width"] = USABLE_WIDTH
+        else:
+            size["height"] = USABLE_HEIGHT
+    else:
+        if width_px is not None:
+            size["width"] = width
+        if height_px is not None:
+            size["height"] = height
+    return size
