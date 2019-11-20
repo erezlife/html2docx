@@ -3,12 +3,20 @@ from html.parser import HTMLParser
 from typing import Iterator, List, Optional, Tuple
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 from tinycss2 import parse_declaration_list
 from tinycss2.ast import IdentToken
 
 WHITESPACE_RE = re.compile(r"\s+")
+
+ALIGNMENTS = {
+    "left": WD_ALIGN_PARAGRAPH.LEFT,
+    "center": WD_ALIGN_PARAGRAPH.CENTER,
+    "right": WD_ALIGN_PARAGRAPH.RIGHT,
+    "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
+}
 
 
 def attr_to_css(attr: Tuple[str, Optional[str]]) -> Iterator[Tuple[str, str]]:
@@ -53,8 +61,15 @@ class HTML2Docx(HTMLParser):
 
         # Formatting options
         self.pre = False
+        self.alignment: Optional[int] = None
         self.attrs: List[List[str]] = []
         self.collapse_space = True
+
+    def init_p(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        for attr in attrs:
+            for name, value in attr_to_css(attr):
+                if name == "text-align":
+                    self.alignment = ALIGNMENTS.get(value, WD_ALIGN_PARAGRAPH.LEFT)
 
     def finish_p(self) -> None:
         if self.r is not None:
@@ -75,6 +90,8 @@ class HTML2Docx(HTMLParser):
         if self.p is None:
             style = self.list_style[-1] if self.list_style else None
             self.p = self.doc.add_paragraph(style=style)
+            if self.alignment is not None:
+                self.p.alignment = self.alignment
         if self.r is None:
             self.r = self.p.add_run()
             for attrs in self.attrs:
@@ -105,6 +122,8 @@ class HTML2Docx(HTMLParser):
             self.p = self.doc.add_heading(level=level)
         elif tag == "ol":
             self.add_list_style("List Number")
+        elif tag == "p":
+            self.init_p(attrs)
         elif tag == "pre":
             self.pre = True
         elif tag == "span":
