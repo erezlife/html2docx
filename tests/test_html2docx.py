@@ -8,17 +8,16 @@ from html2docx import html2docx
 
 
 def generate_testdata():
-    datadir = pathlib.Path(__file__).parent.joinpath("data")
+    datadir = pathlib.Path(__file__).parent / "data"
     for html_path in datadir.glob("*.html"):
-        spec_path = datadir.joinpath(f"{html_path.stem}.json")
+        spec_path = html_path.with_suffix(".json")
         yield html_path, spec_path
 
 
 @pytest.mark.parametrize("html_path,spec_path", generate_testdata())
 def test_html2docx(html_path, spec_path):
     title = html_path.name
-    with html_path.open() as fp:
-        html = fp.read()
+    html = html_path.read_text()
     with spec_path.open() as fp:
         spec = json.load(fp)
 
