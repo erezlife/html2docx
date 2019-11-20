@@ -32,6 +32,8 @@ def test_html2docx(html_path, spec_path):
     for p, p_spec in zip(doc.paragraphs, spec):
         assert p.text == p_spec["text"]
         assert p.style.name == p_spec.get("style", "Normal")
+        if p.alignment:
+            assert int(p.alignment) == p_spec["alignment"]
 
         runs_spec = p_spec["runs"]
         assert len(p.runs) == len(runs_spec)

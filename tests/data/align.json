@@ -1,0 +1,29 @@
+[
+    {
+        "text": "Centered paragraph.",
+        "alignment": 1,
+        "runs": [
+            {
+                "text": "Centered paragraph."
+            }
+        ]
+    },
+    {
+        "text": "This paragraph is aligned to the right.",
+        "alignment": 2,
+        "runs": [
+            {
+                "text": "This paragraph is aligned to the right."
+            }
+        ]
+    },
+    {
+        "text": "This paragraph is justified.",
+        "alignment": 3,
+        "runs": [
+            {
+                "text": "This paragraph is justified."
+            }
+        ]
+    }
+]
