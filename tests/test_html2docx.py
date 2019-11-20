@@ -6,9 +6,12 @@ import pytest
 
 from html2docx import html2docx
 
+TEST_DIR = pathlib.Path(__file__).parent.resolve(strict=True)
+PROJECT_DIR = TEST_DIR.parent
+
 
 def generate_testdata():
-    datadir = pathlib.Path(__file__).parent / "data"
+    datadir = TEST_DIR / "data"
     for html_path in datadir.glob("*.html"):
         spec_path = html_path.with_suffix(".json")
         yield html_path, spec_path
@@ -42,5 +45,6 @@ def test_html2docx(html_path, spec_path):
                 "superscript",
                 "underline",
             ):
-                msg = f"Wrong {attr} for text '{run.text}' in {html_path}"
+                rel_path = html_path.relative_to(PROJECT_DIR)
+                msg = f"Wrong {attr} for text '{run.text}' in {rel_path}"
                 assert getattr(run.font, attr) is run_spec.get(attr), msg
