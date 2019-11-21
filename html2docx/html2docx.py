@@ -1,6 +1,5 @@
 import re
 from html.parser import HTMLParser
-from io import BytesIO
 from typing import Iterator, List, Optional, Tuple
 
 from docx import Document
@@ -144,15 +143,3 @@ class HTML2Docx(HTMLParser):
                 del self.list_style[-1]
             elif tag == "pre":
                 self.pre = False
-
-
-def html2docx(content: str, title: str) -> BytesIO:
-    """Convert valid HTML content to a docx document and return it as a
-    io.BytesIO() object.
-    """
-    parser = HTML2Docx(title)
-    parser.feed(content.strip())
-
-    buf = BytesIO()
-    parser.doc.save(buf)
-    return buf
