@@ -6,14 +6,10 @@ script: tox
 
 matrix:
   include:
-    - python: "3.6"
-      env: TOXENV=black
-    - python: "3.6"
-      env: TOXENV=flake8
-    - python: "3.6"
-      env: TOXENV=isort
-    - python: "3.6"
-      env: TOXENV=mypy
+    - env: TOXENV=black
+    - env: TOXENV=flake8
+    - env: TOXENV=isort
+    - env: TOXENV=mypy
     - python: "3.6"
       env: TOXENV=py36
     - python: "3.7"
