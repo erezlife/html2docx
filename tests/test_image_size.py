@@ -1,16 +1,13 @@
-from io import BytesIO
 from math import ceil
 
 from docx.shared import Inches
-from PIL import Image
 
 from html2docx.image import USABLE_HEIGHT, USABLE_WIDTH, image_size
 
-from .utils import PROJECT_DIR
+from .utils import DPI, PROJECT_DIR, generate_image
 
 broken_image = PROJECT_DIR / "html2docx" / "image-broken.png"
 broken_image_bytes = broken_image.read_bytes()
-DPI = 72
 
 
 def inches_to_px(inches: int, dpi: int = DPI) -> int:
@@ -19,13 +16,6 @@ def inches_to_px(inches: int, dpi: int = DPI) -> int:
 
 def px_to_inches(px: int, dpi: int = DPI) -> int:
     return ceil(px * Inches(1) / dpi)
-
-
-def generate_image(width: int, height: int, dpi=(DPI, DPI)) -> BytesIO:
-    data = BytesIO()
-    with Image.new("L", (width, height)) as image:
-        image.save(data, format="png", dpi=dpi)
-    return data
 
 
 def test_one_px():

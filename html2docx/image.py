@@ -1,10 +1,12 @@
+import base64
+import binascii
 import http
 import io
 import pathlib
 import time
 import urllib.error
 import urllib.request
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
 from docx.image.exceptions import UnrecognizedImageError
 from docx.image.image import Image
@@ -17,11 +19,29 @@ USABLE_WIDTH = Inches(5.8)
 
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MiB
 
+RFC_2397_BASE64 = ";base64"
 
-def load_image(src: str) -> io.BytesIO:
+
+def make_image(data: Optional[bytes]) -> io.BytesIO:
     image_buffer = None
+    if data:
+        image_buffer = io.BytesIO(data)
+        try:
+            Image.from_blob(image_buffer.getbuffer())
+        except UnrecognizedImageError:
+            image_buffer = None
+
+    if not image_buffer:
+        broken_img_path = pathlib.Path(__file__).parent / "image-broken.png"
+        image_buffer = io.BytesIO(broken_img_path.read_bytes())
+
+    return image_buffer
+
+
+def load_external_image(src: str) -> Optional[bytes]:
+    data = None
     retry = 3
-    while retry and not image_buffer:
+    while retry and not data:
         try:
             with urllib.request.urlopen(src) as response:
                 size = response.getheader("Content-Length")
@@ -30,7 +50,7 @@ def load_image(src: str) -> io.BytesIO:
                 # Read up to MAX_IMAGE_SIZE when response does not contain
                 # the Content-Length header. The extra byte avoids an extra read to
                 # check whether the EOF was reached.
-                data = response.read(MAX_IMAGE_SIZE + 1)
+                data = cast(bytes, response.read(MAX_IMAGE_SIZE + 1))
         except (ValueError, http.client.HTTPException, urllib.error.HTTPError):
             # ValueError: Invalid URL or non-integer Content-Length.
             # HTTPException: Server does not speak HTTP properly.
@@ -43,19 +63,29 @@ def load_image(src: str) -> io.BytesIO:
                 time.sleep(1)
         else:
             if len(data) <= MAX_IMAGE_SIZE:
-                image_buffer = io.BytesIO(data)
+                return data
+    return None
 
-    if image_buffer:
+
+def load_inline_image(src: str) -> Optional[bytes]:
+    image_data = None
+    header_data = src.split(RFC_2397_BASE64 + ",", maxsplit=1)
+    if len(header_data) == 2:
+        data = header_data[1]
         try:
-            Image.from_blob(image_buffer.getbuffer())
-        except UnrecognizedImageError:
-            image_buffer = None
+            image_data = base64.b64decode(data, validate=True)
+        except (binascii.Error, ValueError):
+            # binascii.Error: Character outside of base64 set.
+            # ValueError: Character outside of ASCII.
+            pass
+    return image_data
 
-    if not image_buffer:
-        broken_img_path = pathlib.Path(__file__).parent / "image-broken.png"
-        image_buffer = io.BytesIO(broken_img_path.read_bytes())
 
-    return image_buffer
+def load_image(src: str) -> io.BytesIO:
+    image_bytes = (
+        load_inline_image(src) if src.startswith("data:") else load_external_image(src)
+    )
+    return make_image(image_bytes)
 
 
 def image_size(
