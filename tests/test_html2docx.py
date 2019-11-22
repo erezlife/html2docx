@@ -19,6 +19,8 @@ def generate_testdata():
 
 @pytest.mark.parametrize("html_path,spec_path", generate_testdata())
 def test_html2docx(html_path, spec_path):
+    html_rel_path = html_path.relative_to(PROJECT_DIR)
+
     title = html_path.name
     html = html_path.read_text()
     with spec_path.open() as fp:
@@ -45,6 +47,5 @@ def test_html2docx(html_path, spec_path):
                 "superscript",
                 "underline",
             ):
-                rel_path = html_path.relative_to(PROJECT_DIR)
-                msg = f"Wrong {attr} for text '{run.text}' in {rel_path}"
+                msg = f"Wrong {attr} for text '{run.text}' in {html_rel_path}"
                 assert getattr(run.font, attr) is run_spec.get(attr), msg
