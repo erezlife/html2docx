@@ -3,6 +3,7 @@ import pathlib
 
 import docx
 import pytest
+from docx.shared import Pt
 
 from html2docx import html2docx
 
@@ -37,8 +38,14 @@ def test_html2docx(html_path, spec_path):
     for p, p_spec in zip(doc.paragraphs, spec):
         assert p.text == p_spec["text"]
         assert p.style.name == p_spec.get("style", "Normal")
-        if p.alignment:
+        if p_spec.get("alignment"):
             assert int(p.alignment) == p_spec["alignment"]
+        else:
+            assert p.alignment is None
+        if p_spec.get("left_indent"):
+            assert p.paragraph_format.left_indent == Pt(p_spec["left_indent"])
+        else:
+            assert p.paragraph_format.left_indent is None
 
         runs_spec = p_spec["runs"]
         assert len(p.runs) == len(runs_spec)

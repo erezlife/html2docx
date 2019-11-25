@@ -1,0 +1,11 @@
+[
+    {
+        "text": "Simple text with offset.",
+        "left_indent": 40,
+        "runs": [
+            {
+                "text": "Simple text with offset."
+            }
+        ]
+    }
+]

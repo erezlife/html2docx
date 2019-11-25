@@ -1,13 +1,14 @@
 import re
 from html.parser import HTMLParser
-from typing import Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 from tinycss2 import parse_declaration_list
-from tinycss2.ast import IdentToken
+from tinycss2.ast import DimensionToken, IdentToken
 
 WHITESPACE_RE = re.compile(r"\s+")
 
@@ -26,11 +27,17 @@ def get_attr(attrs: List[Tuple[str, Optional[str]]], attr_name: str) -> str:
     return value
 
 
-def style_to_css(style: str) -> Iterator[Tuple[str, str]]:
+def style_to_css(style: str) -> Iterator[Dict[str, Any]]:
     for declaration in parse_declaration_list(style):
         for value in declaration.value:
-            if isinstance(value, IdentToken):
-                yield declaration.lower_name, value.lower_value
+            if isinstance(value, DimensionToken):
+                yield {
+                    "name": declaration.lower_name,
+                    "value": value.value,
+                    "unit": value.lower_unit,
+                }
+            elif isinstance(value, IdentToken):
+                yield {"name": declaration.lower_name, "value": value.lower_value}
 
 
 def html_attrs_to_font_style(attrs: List[Tuple[str, Optional[str]]]) -> List[str]:
@@ -44,10 +51,11 @@ def html_attrs_to_font_style(attrs: List[Tuple[str, Optional[str]]]) -> List[str
     styles = []
     style = get_attr(attrs, "style")
     for style_decl in style_to_css(style):
-        if style_decl == ("text-decoration", "underline"):
-            styles.append("underline")
-        elif style_decl == ("text-decoration", "line-through"):
-            styles.append("strike")
+        if style_decl["name"] == "text-decoration":
+            if style_decl["value"] == "underline":
+                styles.append("underline")
+            elif style_decl["value"] == "line-through":
+                styles.append("strike")
     return styles
 
 
@@ -67,14 +75,19 @@ class HTML2Docx(HTMLParser):
         # Formatting options
         self.pre = False
         self.alignment: Optional[int] = None
+        self.padding_left: Optional[Pt] = None
         self.attrs: List[List[str]] = []
         self.collapse_space = True
 
     def init_p(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
         style = get_attr(attrs, "style")
-        for name, value in style_to_css(style):
-            if name == "text-align":
-                self.alignment = ALIGNMENTS.get(value, WD_ALIGN_PARAGRAPH.LEFT)
+        for style_decl in style_to_css(style):
+            if style_decl["name"] == "text-align":
+                self.alignment = ALIGNMENTS.get(
+                    style_decl["value"], WD_ALIGN_PARAGRAPH.LEFT
+                )
+            elif style_decl["name"] == "padding-left" and style_decl["unit"] == "px":
+                self.padding_left = Pt(style_decl["value"])
 
     def finish_p(self) -> None:
         if self.r is not None:
@@ -97,6 +110,8 @@ class HTML2Docx(HTMLParser):
             self.p = self.doc.add_paragraph(style=style)
             if self.alignment is not None:
                 self.p.alignment = self.alignment
+        if self.padding_left:
+            self.p.paragraph_format.left_indent = self.padding_left
         if self.r is None:
             self.r = self.p.add_run()
             for attrs in self.attrs:
