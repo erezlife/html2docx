@@ -19,13 +19,18 @@ ALIGNMENTS = {
 }
 
 
-def attr_to_css(attr: Tuple[str, Optional[str]]) -> Iterator[Tuple[str, str]]:
-    name, value = attr
-    if name == "style":
-        for declaration in parse_declaration_list(value):
-            for value in declaration.value:
-                if isinstance(value, IdentToken):
-                    yield declaration.lower_name, value.lower_value
+def get_attr(attrs: List[Tuple[str, Optional[str]]], attr_name: str) -> str:
+    value = next((val for name, val in attrs if name == attr_name), "")
+    if value is None:
+        raise AttributeError(attr_name)
+    return value
+
+
+def style_to_css(style: str) -> Iterator[Tuple[str, str]]:
+    for declaration in parse_declaration_list(style):
+        for value in declaration.value:
+            if isinstance(value, IdentToken):
+                yield declaration.lower_name, value.lower_value
 
 
 def html_attrs_to_font_style(attrs: List[Tuple[str, Optional[str]]]) -> List[str]:
@@ -37,12 +42,12 @@ def html_attrs_to_font_style(attrs: List[Tuple[str, Optional[str]]]) -> List[str
         a list of style names to be applied to Run Font property
     """
     styles = []
-    for attr in attrs:
-        for style in attr_to_css(attr):
-            if style == ("text-decoration", "underline"):
-                styles.append("underline")
-            elif style == ("text-decoration", "line-through"):
-                styles.append("strike")
+    style = get_attr(attrs, "style")
+    for style_decl in style_to_css(style):
+        if style_decl == ("text-decoration", "underline"):
+            styles.append("underline")
+        elif style_decl == ("text-decoration", "line-through"):
+            styles.append("strike")
     return styles
 
 
@@ -66,10 +71,10 @@ class HTML2Docx(HTMLParser):
         self.collapse_space = True
 
     def init_p(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
-        for attr in attrs:
-            for name, value in attr_to_css(attr):
-                if name == "text-align":
-                    self.alignment = ALIGNMENTS.get(value, WD_ALIGN_PARAGRAPH.LEFT)
+        style = get_attr(attrs, "style")
+        for name, value in style_to_css(style):
+            if name == "text-align":
+                self.alignment = ALIGNMENTS.get(value, WD_ALIGN_PARAGRAPH.LEFT)
 
     def finish_p(self) -> None:
         if self.r is not None:
