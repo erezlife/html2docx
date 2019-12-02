@@ -20,6 +20,20 @@ ALIGNMENTS = {
     "right": WD_ALIGN_PARAGRAPH.RIGHT,
     "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
 }
+BLOCK_ELEMENTS = (
+    "blockquote",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "ul",
+)
 
 
 def get_attr(attrs: List[Tuple[str, Optional[str]]], attr_name: str) -> str:
@@ -78,6 +92,7 @@ class HTML2Docx(HTMLParser):
 
         # Formatting options
         self.pre = False
+        self.style: Optional[str] = None
         self.alignment: Optional[int] = None
         self.padding_left: Optional[Pt] = None
         self.attrs: List[List[Tuple[str, Any]]] = []
@@ -110,7 +125,7 @@ class HTML2Docx(HTMLParser):
 
     def add_text(self, data: str) -> None:
         if self.p is None:
-            style = self.list_style[-1] if self.list_style else None
+            style = self.list_style[-1] if self.list_style else self.style
             self.p = self.doc.add_paragraph(style=style)
             if self.alignment is not None:
                 self.p.alignment = self.alignment
@@ -147,6 +162,8 @@ class HTML2Docx(HTMLParser):
             self.init_run([])
         elif tag in ["b", "strong"]:
             self.init_run([("bold", True)])
+        elif tag == "blockquote":
+            self.style = "Quote"
         elif tag == "br":
             if self.r:
                 self.r.add_break()
@@ -195,7 +212,7 @@ class HTML2Docx(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag in ["a", "b", "code", "em", "i", "span", "strong", "sub", "sup", "u"]:
             self.finish_run()
-        elif tag in ["h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"]:
+        elif tag in BLOCK_ELEMENTS:
             self.finish_p()
             if tag in ["ol", "ul"]:
                 del self.list_style[-1]

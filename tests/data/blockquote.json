@@ -1,0 +1,29 @@
+[
+    {
+        "text": "Blockquote text",
+        "style": "Quote",
+        "runs": [
+            {
+                "text": "Blockquote text"
+            }
+        ]
+    },
+    {
+        "text": "Regular text.",
+        "runs": [
+            {
+                "text": "Regular text."
+            }
+        ]
+    },
+    {
+        "text": "lorem ipsum",
+        "style": "Quote",
+        "alignment": 2,
+        "runs": [
+            {
+                "text": "lorem ipsum"
+            }
+        ]
+    }
+]
