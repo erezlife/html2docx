@@ -42,7 +42,9 @@ def style_to_css(style: str) -> Iterator[Dict[str, Any]]:
                 yield {"name": declaration.lower_name, "value": value.lower_value}
 
 
-def html_attrs_to_font_style(attrs: List[Tuple[str, Optional[str]]]) -> List[str]:
+def html_attrs_to_font_style(
+    attrs: List[Tuple[str, Optional[str]]]
+) -> List[Tuple[str, Any]]:
     """Return Font style names based on tag style attributes
 
     :param attrs:
@@ -55,9 +57,9 @@ def html_attrs_to_font_style(attrs: List[Tuple[str, Optional[str]]]) -> List[str
     for style_decl in style_to_css(style):
         if style_decl["name"] == "text-decoration":
             if style_decl["value"] == "underline":
-                styles.append("underline")
+                styles.append(("underline", True))
             elif style_decl["value"] == "line-through":
-                styles.append("strike")
+                styles.append(("strike", True))
     return styles
 
 
@@ -78,7 +80,7 @@ class HTML2Docx(HTMLParser):
         self.pre = False
         self.alignment: Optional[int] = None
         self.padding_left: Optional[Pt] = None
-        self.attrs: List[List[str]] = []
+        self.attrs: List[List[Tuple[str, Any]]] = []
         self.collapse_space = True
 
     def init_p(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
@@ -96,7 +98,7 @@ class HTML2Docx(HTMLParser):
             self.r.text = self.r.text.rstrip()
         self._reset()
 
-    def init_run(self, attrs: List[str]) -> None:
+    def init_run(self, attrs: List[Tuple[str, Any]]) -> None:
         self.attrs.append(attrs)
         if attrs:
             self.r = None
@@ -117,8 +119,8 @@ class HTML2Docx(HTMLParser):
         if self.r is None:
             self.r = self.p.add_run()
             for attrs in self.attrs:
-                for run_style in attrs:
-                    setattr(self.r.font, run_style, True)
+                for font_attr, value in attrs:
+                    setattr(self.r.font, font_attr, value)
         self.r.add_text(data)
 
     def add_list_style(self, name: str) -> None:
@@ -144,12 +146,12 @@ class HTML2Docx(HTMLParser):
             self.href = get_attr(attrs, "href")
             self.init_run([])
         elif tag in ["b", "strong"]:
-            self.init_run(["bold"])
+            self.init_run([("bold", True)])
         elif tag == "br":
             if self.r:
                 self.r.add_break()
         elif tag in ["em", "i"]:
-            self.init_run(["italic"])
+            self.init_run([("italic", True)])
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
             level = int(tag[-1])
             self.p = self.doc.add_heading(level=level)
@@ -165,11 +167,11 @@ class HTML2Docx(HTMLParser):
             span_attrs = html_attrs_to_font_style(attrs)
             self.init_run(span_attrs)
         elif tag == "sub":
-            self.init_run(["subscript"])
+            self.init_run([("subscript", True)])
         elif tag == "sup":
-            self.init_run(["superscript"])
+            self.init_run([("superscript", True)])
         elif tag == "u":
-            self.init_run(["underline"])
+            self.init_run([("underline", True)])
         elif tag == "ul":
             self.add_list_style("List Bullet")
 
