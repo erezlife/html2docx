@@ -1,0 +1,17 @@
+[
+    {
+        "text": "Add this line: value = get_value(arg) to the file.",
+        "runs": [
+            {
+                "text": "Add this line: "
+            },
+            {
+                "text": "value = get_value(arg)",
+                "name": "Mono"
+            },
+            {
+                "text": " to the file."
+            }
+        ]
+    }
+]

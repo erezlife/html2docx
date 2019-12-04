@@ -150,6 +150,8 @@ class HTML2Docx(HTMLParser):
         elif tag == "br":
             if self.r:
                 self.r.add_break()
+        elif tag == "code":
+            self.init_run([("name", "Mono")])
         elif tag in ["em", "i"]:
             self.init_run([("italic", True)])
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
@@ -191,7 +193,7 @@ class HTML2Docx(HTMLParser):
             self.add_text(data)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag in ["a", "b", "em", "i", "span", "strong", "sub", "sup", "u"]:
+        if tag in ["a", "b", "code", "em", "i", "span", "strong", "sub", "sup", "u"]:
             self.finish_run()
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"]:
             self.finish_p()
