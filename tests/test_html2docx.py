@@ -8,7 +8,15 @@ from html2docx import html2docx
 
 from .utils import PROJECT_DIR, TEST_DIR
 
-FONT_ATTRS = ["bold", "italic", "strike", "subscript", "superscript", "underline"]
+FONT_ATTRS = [
+    "bold",
+    "italic",
+    "name",
+    "strike",
+    "subscript",
+    "superscript",
+    "underline",
+]
 
 
 def generate_testdata():
@@ -56,7 +64,7 @@ def test_html2docx(html_path, spec_path):
             )
             for attr in FONT_ATTRS:
                 msg = f"Wrong {attr} for text '{run.text}' in {html_rel_path}"
-                assert getattr(run.font, attr) is run_spec.get(attr), msg
+                assert getattr(run.font, attr) == run_spec.get(attr), msg
             if shapes_spec:
                 shapes = run.part.inline_shapes
                 assert len(shapes) == len(shapes_spec)
