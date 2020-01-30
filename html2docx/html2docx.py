@@ -84,6 +84,9 @@ class HTML2Docx(HTMLParser):
         self.collapse_space = True
 
     def init_p(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        align = get_attr(attrs, "align")
+        if align:
+            self.alignment = ALIGNMENTS.get(align, WD_ALIGN_PARAGRAPH.LEFT)
         style = get_attr(attrs, "style")
         for style_decl in style_to_css(style):
             if style_decl["name"] == "text-align":
@@ -139,7 +142,11 @@ class HTML2Docx(HTMLParser):
 
         image_buffer = load_image(src)
         size = image_size(image_buffer, width_px, height_px)
-        self.doc.add_picture(image_buffer, **size)
+        paragraph = self.doc.add_paragraph()
+        if self.alignment is not None:
+            paragraph.alignment = self.alignment
+        run = paragraph.add_run()
+        run.add_picture(image_buffer, **size)
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag == "a":
