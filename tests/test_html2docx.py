@@ -44,8 +44,8 @@ def test_html2docx(html_path, spec_path):
     for p, p_spec in zip(doc.paragraphs, spec):
         assert p.text == p_spec["text"]
         assert p.style.name == p_spec.get("style", "Normal")
-        if p_spec.get("alignment"):
-            assert int(p.alignment) == p_spec["alignment"]
+        if p_spec.get("alignment") is not None:
+            assert p.alignment == p_spec["alignment"]
         else:
             assert p.alignment is None
         if p_spec.get("left_indent"):
