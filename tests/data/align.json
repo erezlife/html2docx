@@ -25,5 +25,50 @@
                 "text": "This paragraph is justified."
             }
         ]
+    },
+    {
+        "text": "Left alignment.",
+        "alignment": 0,
+        "runs": [
+            {
+                "text": "Left alignment."
+            }
+        ]
+    },
+    {
+        "text": "Centered alignment.",
+        "alignment": 1,
+        "runs": [
+            {
+                "text": "Centered alignment."
+            }
+        ]
+    },
+    {
+        "text": "Right alignment.",
+        "alignment": 2,
+        "runs": [
+            {
+                "text": "Right alignment."
+            }
+        ]
+    },
+    {
+        "text": "Justified alignment.",
+        "alignment": 3,
+        "runs": [
+            {
+                "text": "Justified alignment."
+            }
+        ]
+    },
+    {
+        "text": "Inline style has priority over align attribute.",
+        "alignment": 2,
+        "runs": [
+            {
+                "text": "Inline style has priority over align attribute."
+            }
+        ]
     }
 ]
