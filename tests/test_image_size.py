@@ -2,19 +2,19 @@ from math import ceil
 
 from docx.shared import Inches
 
-from html2docx.image import USABLE_HEIGHT, USABLE_WIDTH, image_size
+from html2docx.image import DEFAULT_DPI, USABLE_HEIGHT, USABLE_WIDTH, image_size
 
-from .utils import DPI, PROJECT_DIR, generate_image
+from .utils import PROJECT_DIR, generate_image
 
 broken_image = PROJECT_DIR / "html2docx" / "image-broken.png"
 broken_image_bytes = broken_image.read_bytes()
 
 
-def inches_to_px(inches: int, dpi: int = DPI) -> int:
+def inches_to_px(inches: int, dpi: int = DEFAULT_DPI) -> int:
     return ceil(inches / Inches(1) * dpi)
 
 
-def px_to_inches(px: int, dpi: int = DPI) -> int:
+def px_to_inches(px: int, dpi: int = DEFAULT_DPI) -> int:
     return ceil(px * Inches(1) / dpi)
 
 
@@ -77,15 +77,29 @@ def test_resize_exceeds_height():
     assert size == {"height": USABLE_HEIGHT}
 
 
-def test_dpi_width():
+def test_no_pixel_size_uses_dpi_width():
     width_px = inches_to_px(USABLE_WIDTH, 300)
     image = generate_image(width=width_px, height=1, dpi=(300, 300))
     size = image_size(image)
     assert size == {}
 
 
-def test_dpi_height():
+def test_no_pixel_size_uses_dpi_height():
     height_px = inches_to_px(USABLE_HEIGHT, 300)
     image = generate_image(width=1, height=height_px, dpi=(300, 300))
     size = image_size(image)
     assert size == {}
+
+
+def test_pixel_size_specified_ignores_dpi_width():
+    width_px = inches_to_px(Inches(1))
+    image = generate_image(width=width_px, height=1, dpi=(300, 300))
+    size = image_size(image, width_px=width_px)
+    assert size == {"width": Inches(1)}
+
+
+def test_pixel_size_specified_ignores_dpi_height():
+    height_px = inches_to_px(Inches(1))
+    image = generate_image(width=1, height=height_px, dpi=(300, 300))
+    size = image_size(image, height_px=height_px)
+    assert size == {"height": Inches(1)}
