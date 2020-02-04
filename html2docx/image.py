@@ -16,6 +16,7 @@ from docx.shared import Inches
 # In LibreOffice, the maximum height for an image is capped to USABLE_HEIGHT.
 USABLE_HEIGHT = Inches(8.1)
 USABLE_WIDTH = Inches(5.8)
+DEFAULT_DPI = 72
 
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MiB
 
@@ -104,11 +105,23 @@ def image_size(
     """
     image = Image.from_blob(image_buffer.getbuffer())
 
-    height = image.px_height if height_px is None else height_px
-    width = image.px_width if width_px is None else width_px
+    # Normalize image size to inches.
+    # - Without a specified pixel size, images are their actual pixel size, so that
+    #   images of the same pixel size appear the same size in the document, regardless
+    #   of their resolution.
+    # - With a specified pixel size, images should take the specified size, regardless
+    #   of their resolution.
+    if height_px is None:
+        height = image.px_height / image.vert_dpi
+    else:
+        height = height_px / DEFAULT_DPI
+    if width_px is None:
+        width = image.px_width / image.horz_dpi
+    else:
+        width = width_px / DEFAULT_DPI
 
-    height = Inches(height / image.vert_dpi)
-    width = Inches(width / image.horz_dpi)
+    height = Inches(height)
+    width = Inches(width)
 
     size = {}
     if width > USABLE_WIDTH:
