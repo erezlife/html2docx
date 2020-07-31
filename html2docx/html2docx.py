@@ -78,6 +78,8 @@ class HTML2Docx(HTMLParser):
 
         # Formatting options
         self.pre = False
+        self.table_cell: Optional[Any] = None
+        self.tables: List[Tuple[Any, int, int]] = []
         self.alignment: Optional[int] = None
         self.padding_left: Optional[Pt] = None
         self.attrs: List[List[Tuple[str, Any]]] = []
@@ -100,6 +102,38 @@ class HTML2Docx(HTMLParser):
         if self.r is not None:
             self.r.text = self.r.text.rstrip()
         self._reset()
+
+    def init_table(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        if self.table_cell is not None:
+            table = self.table_cell.add_table(rows=0, cols=0)
+        else:
+            table = self.doc.add_table(rows=0, cols=0)
+        self.tables.append((table, -1, -1))
+
+    def finish_table(self) -> None:
+        table = self.tables.pop()[0]
+        section = self.doc.sections[0]
+        page_width = section.page_width - section.left_margin - section.right_margin
+        page_width = int(page_width * (0.5 ** len(self.tables)))
+        for col in table.columns:
+            col.width = page_width // len(table.columns)
+
+    def init_tr(self) -> None:
+        table, row, col = self.tables[-1]
+        row += 1
+        col = -1
+        self.tables[-1] = (table, row, col)
+        table.add_row()
+
+    def init_tdth(self) -> None:
+        table, row, col = self.tables[-1]
+        col += 1
+        self.tables[-1] = (table, row, col)
+        if col >= len(table.columns):
+            table.add_column(0)
+        self.table_cell = table.cell(row, col)
+        self.p = self.table_cell.paragraphs[0]
+        self.r = None
 
     def init_run(self, attrs: List[Tuple[str, Any]]) -> None:
         self.attrs.append(attrs)
@@ -195,6 +229,12 @@ class HTML2Docx(HTMLParser):
             self.init_run([("underline", True)])
         elif tag == "ul":
             self.add_list_style("List Bullet")
+        elif tag == "table":
+            self.init_table(attrs)
+        elif tag == "tr":
+            self.init_tr()
+        elif tag in ["td", "th"]:
+            self.init_tdth()
 
     def handle_data(self, data: str) -> None:
         if not self.pre:
@@ -222,3 +262,9 @@ class HTML2Docx(HTMLParser):
                 del self.list_style[-1]
             elif tag == "pre":
                 self.pre = False
+        elif tag == "table":
+            self.finish_table()
+        elif tag in ["td", "th"]:
+            self.table_cell = None
+            self.p = None
+            self.r = None
