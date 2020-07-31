@@ -70,6 +70,7 @@ class HTML2Docx(HTMLParser):
         self.doc.core_properties.title = title
         self.list_style: List[str] = []
         self.href = ""
+        self.tag: Optional[str] = None
         self._reset()
 
     def _reset(self) -> None:
@@ -96,10 +97,29 @@ class HTML2Docx(HTMLParser):
             elif style_decl["name"] == "padding-left" and style_decl["unit"] == "px":
                 self.padding_left = Pt(style_decl["value"])
 
+    def init_table(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.table_data: List[List[str]] = []
+
     def finish_p(self) -> None:
         if self.r is not None:
             self.r.text = self.r.text.rstrip()
         self._reset()
+
+    def finish_table(self) -> None:
+        if self.table_data:
+            # remove empty header
+            if not self.table_data[0]:
+                del self.table_data[0]
+
+            # create table
+            rows = len(self.table_data)
+            cols = len(self.table_data[-1])
+            table = self.doc.add_table(rows=rows, cols=cols)
+
+            # copy data
+            for row in range(rows):
+                for col in range(cols):
+                    table.cell(row, col).text = self.table_data[row][col]
 
     def init_run(self, attrs: List[Tuple[str, Any]]) -> None:
         self.attrs.append(attrs)
@@ -149,6 +169,7 @@ class HTML2Docx(HTMLParser):
         run.add_picture(image_buffer, **size)
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.tag = tag
         if tag == "a":
             self.href = get_attr(attrs, "href")
             self.init_run([])
@@ -183,8 +204,17 @@ class HTML2Docx(HTMLParser):
             self.init_run([("underline", True)])
         elif tag == "ul":
             self.add_list_style("List Bullet")
+        elif tag == "table":
+            self.init_table(attrs)
+        elif tag == "tr":
+            self.table_data.append([])
 
     def handle_data(self, data: str) -> None:
+        if self.tag in ("td", "th"):
+            if self.table_data:
+                self.table_data[-1].append(data)
+            return
+
         if not self.pre:
             data = re.sub(WHITESPACE_RE, " ", data)
         if self.collapse_space:
@@ -208,3 +238,6 @@ class HTML2Docx(HTMLParser):
                 del self.list_style[-1]
             elif tag == "pre":
                 self.pre = False
+        elif tag == "table":
+            self.finish_table()
+        self.tag = None
