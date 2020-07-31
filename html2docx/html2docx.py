@@ -146,7 +146,7 @@ class HTML2Docx(HTMLParser):
                     setattr(self.r.font, font_attr, value)
         self.r.add_text(data)
 
-    def add_code(self, data : str) -> None:
+    def add_code(self, data: str) -> None:
         lines = data.splitlines()
         for linenr, line in enumerate(lines):
             self.add_text(line.strip())
@@ -218,7 +218,9 @@ class HTML2Docx(HTMLParser):
             self.table_data.append([])
 
     def handle_data(self, data: str) -> None:
-        if self.tag in ("td", "th"):
+        if self.tag == "style":
+            return
+        elif self.tag in ("td", "th"):
             if self.table_data:
                 self.table_data[-1].append(data)
             return
