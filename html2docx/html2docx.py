@@ -146,6 +146,14 @@ class HTML2Docx(HTMLParser):
                     setattr(self.r.font, font_attr, value)
         self.r.add_text(data)
 
+    def add_code(self, data : str) -> None:
+        lines = data.splitlines()
+        for linenr, line in enumerate(lines):
+            self.add_text(line.strip())
+            if linenr < len(lines) - 1:
+                if self.r:
+                    self.r.add_break()
+
     def add_list_style(self, name: str) -> None:
         self.finish_p()
         # The template included by python-docx only has 3 list styles.
@@ -227,7 +235,11 @@ class HTML2Docx(HTMLParser):
                     data += " " + self.href
                 self.href = ""
             self.collapse_space = data.endswith(" ")
-            self.add_text(data)
+
+            if self.tag == "code":
+                self.add_code(data)
+            else:
+                self.add_text(data)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in ["a", "b", "code", "em", "i", "span", "strong", "sub", "sup", "u"]:
