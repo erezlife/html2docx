@@ -2,9 +2,13 @@ import re
 from html.parser import HTMLParser
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
+import webcolors
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
+from docx.oxml.shared import OxmlElement, qn
+from docx.shared import Pt, RGBColor
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 from tinycss2 import parse_declaration_list
@@ -70,6 +74,9 @@ class HTML2Docx(HTMLParser):
         self.doc.core_properties.title = title
         self.list_style: List[str] = []
         self.href = ""
+        self.anchor = ""
+        self.style = ""
+        self.tag: Optional[str] = None
         self._reset()
 
     def _reset(self) -> None:
@@ -96,10 +103,52 @@ class HTML2Docx(HTMLParser):
             elif style_decl["name"] == "padding-left" and style_decl["unit"] == "px":
                 self.padding_left = Pt(style_decl["value"])
 
+    def init_table(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.table_data: List[List[Tuple[str, str]]] = []
+
     def finish_p(self) -> None:
         if self.r is not None:
             self.r.text = self.r.text.rstrip()
         self._reset()
+
+    def finish_table(self) -> None:
+        if self.table_data:
+            # remove empty header
+            header = True
+            if not self.table_data[0]:
+                del self.table_data[0]
+                header = False
+
+            # create table
+            rows = len(self.table_data)
+            cols = len(self.table_data[-1])
+            table = self.doc.add_table(rows=rows, cols=cols)
+
+            # copy data
+            for row in range(rows):
+                for col in range(cols):
+                    cell = table.cell(row, col)
+                    text, style = self.table_data[row][col]
+                    cell.text = text
+                    if style:
+                        for style_decl in style_to_css(style):
+                            if style_decl["name"] == "background":
+                                rgb = webcolors.name_to_hex(style_decl["value"])[1:]
+                                shading = parse_xml(
+                                    r'<w:shd {} w:fill="{}"/>'.format(nsdecls("w"), rgb)
+                                )
+                                cell._tc.get_or_add_tcPr().append(shading)
+
+                            elif style_decl["name"] == "color":
+                                rgb = webcolors.name_to_rgb(style_decl["value"])
+                                for p in cell.paragraphs:
+                                    for r in p.runs:
+                                        r.font.color.rgb = RGBColor(*rgb)
+
+                    if header and row == 0:
+                        for p in cell.paragraphs:
+                            for r in p.runs:
+                                r.font.bold = True
 
     def init_run(self, attrs: List[Tuple[str, Any]]) -> None:
         self.attrs.append(attrs)
@@ -124,7 +173,67 @@ class HTML2Docx(HTMLParser):
             for attrs in self.attrs:
                 for font_attr, value in attrs:
                     setattr(self.r.font, font_attr, value)
-        self.r.add_text(data)
+        if self.href:
+            self.add_hyperlink(self.href, data)
+        elif self.anchor:
+            self.add_bookmark(self.anchor, data)
+        else:
+            self.r.add_text(data)
+
+    def add_hyperlink(self, href: str, text: str) -> None:
+        if not href.startswith("#"):  # TODO external links
+            if text.endswith(" "):
+                text += href + " "
+            else:
+                text += " " + href
+            if self.r:
+                self.r.add_text(text)
+            return
+
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("w:anchor"), href[1:])
+
+        new_run = OxmlElement("w:r")
+
+        rPr = OxmlElement("w:rPr")
+
+        rColor = OxmlElement("w:color")
+        rColor.set(qn("w:val"), "000080")
+        rPr.append(rColor)
+
+        rU = OxmlElement("w:u")
+        rU.set(qn("w:val"), "single")
+        rPr.append(rU)
+
+        new_run.append(rPr)
+        new_run.text = text
+
+        hyperlink.append(new_run)
+
+        if self.p:
+            self.p._p.append(hyperlink)
+        self.r = None
+
+    def add_bookmark(self, anchor: str, text: str) -> None:
+        if self.r:
+            tag = self.r._r
+            start = OxmlElement("w:bookmarkStart")
+            start.set(qn("w:id"), "0")
+            start.set(qn("w:name"), anchor)
+            tag.addprevious(start)
+            end = OxmlElement("w:bookmarkEnd")
+            end.set(qn("w:id"), "0")
+            tag.addnext(end)
+
+            self.r.add_text(self.anchor + " " + text)
+
+    def add_code(self, data: str) -> None:
+        lines = data.splitlines()
+        for linenr, line in enumerate(lines):
+            self.add_text(line.strip())
+            if linenr < len(lines) - 1:
+                if self.r:
+                    self.r.add_break()
 
     def add_list_style(self, name: str) -> None:
         self.finish_p()
@@ -149,8 +258,10 @@ class HTML2Docx(HTMLParser):
         run.add_picture(image_buffer, **size)
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.tag = tag
         if tag == "a":
             self.href = get_attr(attrs, "href")
+            self.anchor = get_attr(attrs, "id")
             self.init_run([])
         elif tag in ["b", "strong"]:
             self.init_run([("bold", True)])
@@ -183,28 +294,48 @@ class HTML2Docx(HTMLParser):
             self.init_run([("underline", True)])
         elif tag == "ul":
             self.add_list_style("List Bullet")
+        elif tag == "table":
+            self.init_table(attrs)
+        elif tag == "tr":
+            self.table_data.append([])
+        elif tag == "td":
+            styles = [b for a, b in attrs if a == "style" and b]
+            if styles:
+                self.style = styles[0]
 
     def handle_data(self, data: str) -> None:
+        if self.tag == "style":
+            return
+        elif self.tag in ("td", "th"):
+            if self.table_data:
+                self.table_data[-1].append((data, self.style))
+            return
         if not self.pre:
             data = re.sub(WHITESPACE_RE, " ", data)
         if self.collapse_space:
             data = data.lstrip()
         if data:
-            if self.href:
-                if data.endswith(" "):
-                    data += self.href + " "
-                else:
-                    data += " " + self.href
-                self.href = ""
             self.collapse_space = data.endswith(" ")
-            self.add_text(data)
+
+            if self.tag == "code":
+                self.add_code(data)
+            else:
+                self.add_text(data)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in ["a", "b", "code", "em", "i", "span", "strong", "sub", "sup", "u"]:
             self.finish_run()
+            if tag == "a":
+                self.href = ""
+                self.anchor = ""
+        elif tag in ["td", "tr"]:
+            self.style = ""
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"]:
             self.finish_p()
             if tag in ["ol", "ul"]:
                 del self.list_style[-1]
             elif tag == "pre":
                 self.pre = False
+        elif tag == "table":
+            self.finish_table()
+        self.tag = None

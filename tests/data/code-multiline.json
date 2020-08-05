@@ -1,0 +1,11 @@
+[
+    {
+        "text": "value = get_value(arg)\ndo_something(value)\nreturn",
+        "runs": [
+            {
+                "text": "value = get_value(arg)\ndo_something(value)\nreturn",
+                "name": "Mono"
+            }
+        ]
+    }
+]
