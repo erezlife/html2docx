@@ -1,0 +1,15 @@
+[
+    {
+        "text": "Lou King:\nActions: bifurcate, twist, turn.",
+        "style": "List Bullet",
+        "runs": [
+            {
+                "text": "Lou King:",
+                "bold": true
+            },
+            {
+                "text": "\nActions: bifurcate, twist, turn."
+            }
+        ]
+    }
+]
