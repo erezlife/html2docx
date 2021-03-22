@@ -111,14 +111,18 @@ class HTML2Docx(HTMLParser):
         if attrs:
             self.r = None
 
+    def prepare_p(self) -> Paragraph:
+        style = self.list_style[-1] if self.list_style else None
+        p = self.doc.add_paragraph(style=style)
+        if self.alignment is not None:
+            p.alignment = self.alignment
+        if self.padding_left:
+            p.paragraph_format.left_indent = self.padding_left
+        return p
+
     def add_text(self, data: str) -> None:
         if self.p is None:
-            style = self.list_style[-1] if self.list_style else None
-            self.p = self.doc.add_paragraph(style=style)
-            if self.alignment is not None:
-                self.p.alignment = self.alignment
-        if self.padding_left:
-            self.p.paragraph_format.left_indent = self.padding_left
+            self.p = self.prepare_p()
         if self.r is None:
             self.r = self.p.add_run()
             for attrs in self.attrs:
@@ -166,10 +170,17 @@ class HTML2Docx(HTMLParser):
             self.p = self.doc.add_heading(level=level)
         elif tag == "img":
             self.add_picture(attrs)
+        elif tag == "li":
+            self.p = self.prepare_p()
         elif tag == "ol":
             self.add_list_style("List Number")
         elif tag == "p":
-            self.init_p(attrs)
+            if self.list_style:
+                if self.p and self.p.runs:
+                    self.add_text("\n")
+                self.init_run(attrs)
+            else:
+                self.init_p(attrs)
         elif tag == "pre":
             self.pre = True
         elif tag == "span":
@@ -202,6 +213,8 @@ class HTML2Docx(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag in ["a", "b", "code", "em", "i", "span", "strong", "sub", "sup", "u"]:
             self.finish_run()
+        elif self.list_style and tag == "p":
+            self.collapse_space = True
         elif tag in ["h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "ul"]:
             self.finish_p()
             if tag in ["ol", "ul"]:
