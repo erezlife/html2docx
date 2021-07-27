@@ -171,6 +171,7 @@ class HTML2Docx(HTMLParser):
         elif tag == "img":
             self.add_picture(attrs)
         elif tag == "li":
+            self.init_p(attrs)
             self.p = self.prepare_p()
         elif tag == "ol":
             self.add_list_style("List Number")
