@@ -1,0 +1,22 @@
+[
+    {
+        "text": "Right King",
+        "alignment": 2,
+        "style": "List Bullet",
+        "runs": [
+            {
+                "text": "Right King"
+            }
+        ]
+    },
+    {
+        "text": "Center King",
+        "alignment": 1,
+        "style": "List Bullet",
+        "runs": [
+            {
+                "text": "Center King"
+            }
+        ]
+    }
+]
