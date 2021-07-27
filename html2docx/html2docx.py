@@ -178,7 +178,7 @@ class HTML2Docx(HTMLParser):
             if self.list_style:
                 if self.p and self.p.runs:
                     self.add_text("\n")
-                self.init_run(attrs)
+                self.init_run([])
             else:
                 self.init_p(attrs)
         elif tag == "pre":
