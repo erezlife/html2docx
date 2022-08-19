@@ -20,6 +20,10 @@ ALIGNMENTS = {
     "right": WD_ALIGN_PARAGRAPH.RIGHT,
     "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
 }
+FLOATS = {
+    "left": WD_ALIGN_PARAGRAPH.LEFT,
+    "right": WD_ALIGN_PARAGRAPH.RIGHT,
+}
 
 
 def get_attr(attrs: List[Tuple[str, Optional[str]]], attr_name: str) -> str:
@@ -143,12 +147,26 @@ class HTML2Docx(HTMLParser):
         width_attr = get_attr(attrs, "width")
         height_px = int(height_attr) if height_attr else None
         width_px = int(width_attr) if width_attr else None
+        style = get_attr(attrs, "style")
 
         image_buffer = load_image(src)
         size = image_size(image_buffer, width_px, height_px)
         paragraph = self.doc.add_paragraph()
         if self.alignment is not None:
             paragraph.alignment = self.alignment
+        auto_margin = 0
+        for style_decl in style_to_css(style):
+            if style_decl["name"] == "float":
+                paragraph.alignment = FLOATS.get(
+                    style_decl["value"], WD_ALIGN_PARAGRAPH.LEFT
+                )
+            elif (
+                style_decl["name"] in ["margin-left", "margin-right"]
+                and style_decl["value"] == "auto"
+            ):
+                auto_margin += 1
+        if auto_margin == 2:
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = paragraph.add_run()
         run.add_picture(image_buffer, **size)
 
