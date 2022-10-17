@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
+from docx.table import Table, _Cell
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 from tinycss2 import parse_declaration_list
@@ -78,8 +79,8 @@ class HTML2Docx(HTMLParser):
 
         # Formatting options
         self.pre = False
-        self.table_cell: Optional[Any] = None
-        self.tables: List[Tuple[Any, int, int]] = []
+        self.table_cell: Optional[_Cell] = None
+        self.tables: List[Tuple[Table, int, int]] = []
         self.alignment: Optional[int] = None
         self.padding_left: Optional[Pt] = None
         self.attrs: List[List[Tuple[str, Any]]] = []
@@ -104,10 +105,8 @@ class HTML2Docx(HTMLParser):
         self._reset()
 
     def init_table(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
-        if self.table_cell is not None:
-            table = self.table_cell.add_table(rows=0, cols=0)
-        else:
-            table = self.doc.add_table(rows=0, cols=0)
+        container = self.doc if self.table_cell is None else self.table_cell
+        table = container.add_table(rows=0, cols=0)
         self.tables.append((table, -1, -1))
 
     def finish_table(self) -> None:
