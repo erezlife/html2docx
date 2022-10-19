@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
-from docx.table import Table, _Cell
+from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 from tinycss2 import parse_declaration_list
@@ -79,8 +79,7 @@ class HTML2Docx(HTMLParser):
 
         # Formatting options
         self.pre = False
-        self.table_cell: Optional[_Cell] = None
-        self.tables: List[Tuple[Table, int, int]] = []
+        self.table: Optional[Tuple[Table, int, int]] = None
         self.alignment: Optional[int] = None
         self.padding_left: Optional[Pt] = None
         self.attrs: List[List[Tuple[str, Any]]] = []
@@ -105,33 +104,34 @@ class HTML2Docx(HTMLParser):
         self._reset()
 
     def init_table(self, attrs: List[Tuple[str, Optional[str]]]) -> None:
-        container = self.doc if self.table_cell is None else self.table_cell
-        table = container.add_table(rows=0, cols=0)
-        self.tables.append((table, -1, -1))
+        self.table = (self.doc.add_table(rows=0, cols=0), -1, -1)
 
     def finish_table(self) -> None:
-        table = self.tables.pop()[0]
+        if self.table is None:
+            return
         section = self.doc.sections[0]
         page_width = section.page_width - section.left_margin - section.right_margin
-        page_width = int(page_width * (0.5 ** len(self.tables)))
+        table = self.table[0]
         for col in table.columns:
             col.width = page_width // len(table.columns)
+        self.table = None
 
     def init_tr(self) -> None:
-        table, row, col = self.tables[-1]
-        row += 1
-        col = -1
-        self.tables[-1] = (table, row, col)
+        if self.table is None:
+            return
+        table, row, col = self.table
         table.add_row()
+        self.table = table, row + 1, -1
 
     def init_tdth(self) -> None:
-        table, row, col = self.tables[-1]
+        if self.table is None:
+            return
+        table, row, col = self.table
         col += 1
-        self.tables[-1] = (table, row, col)
+        self.table = (table, row, col)
         if col >= len(table.columns):
             table.add_column(0)
-        self.table_cell = table.cell(row, col)
-        self.p = self.table_cell.paragraphs[0]
+        self.p = self.table[0].cell(row, col).paragraphs[0]
         self.r = None
 
     def init_run(self, attrs: List[Tuple[str, Any]]) -> None:
@@ -264,6 +264,5 @@ class HTML2Docx(HTMLParser):
         elif tag == "table":
             self.finish_table()
         elif tag in ["td", "th"]:
-            self.table_cell = None
             self.p = None
             self.r = None
