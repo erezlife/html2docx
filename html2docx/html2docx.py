@@ -99,7 +99,7 @@ class HTML2Docx(HTMLParser):
                 self.padding_left = Pt(style_decl["value"])
 
     def finish_p(self) -> None:
-        if self.r is not None:
+        if not self.pre and self.r is not None:
             self.r.text = self.r.text.rstrip()
         self._reset()
 
@@ -161,7 +161,10 @@ class HTML2Docx(HTMLParser):
             for attrs in self.attrs:
                 for font_attr, value in attrs:
                     setattr(self.r.font, font_attr, value)
-        self.r.add_text(data)
+        if self.pre:
+            self.r.text = data
+        else:
+            self.r.add_text(data)
 
     def add_list_style(self, name: str) -> None:
         self.finish_p()
