@@ -1,0 +1,14 @@
+[
+    {
+        "text": "line1\nline2",
+        "runs": [
+            {
+                "text": "line1\n"
+            },
+            {
+                "text": "line2",
+                "bold": true
+            }
+        ]
+    }
+]
